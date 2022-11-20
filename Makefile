@@ -24,7 +24,7 @@ prog: $(OBJ)
 	$(CC) -o $(BUILD_DIR)/$(OUTPUT) $^ $(LINKER_FLAGS) 
 
 %.o: %.cpp
-	@echo "Creating object $%"
+	@echo "Creating object $@"
 	$(CC) -o $@ -c $< $(CCFLAGS) $(INCLUDE_PATH)
 
 run:
