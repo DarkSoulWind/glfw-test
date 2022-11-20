@@ -17,7 +17,7 @@ OBJ = $(SRC_FILES:.cpp=.o)
 
 .PHONY: all clean
 
-all: dirs libs prog
+all: prog
 	@echo "Built target $(BUILD_DIR)/$(OUTPUT)"
 
 prog: $(OBJ)

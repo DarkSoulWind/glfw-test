@@ -27,167 +27,119 @@ std::string readTextFromFile(const char *filename)
     {
         while (getline(file, line))
         {
-            res += line;
+            res += line + '\n';
         }
         file.close();
     }
     return res;
 }
 
+std::string vertexShaderSource = readTextFromFile("src/shader.vert");
+const char *vertexShaderText = vertexShaderSource.c_str();
+std::string fragmentShaderSource = readTextFromFile("src/shader.frag");
+const char *fragmentShaderText = fragmentShaderSource.c_str();
+
 int main(int argc, char *argv[])
 {
-    // std::string vertexShaderSource = readTextFromFile("src/shader.vert");
-    // std::string fragmentShaderSource = readTextFromFile("src/shader.frag");
     glfwInit();
+
+    std::cout << "Vertex shader: " << vertexShaderText << std::endl;
+    std::cout << "Fragment shader: " << fragmentShaderText << std::endl;
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow *window = glfwCreateWindow(800, 600, "Triangle", NULL, NULL);
+    GLfloat vertices[] = {
+        -1, -1, 0,
+        1, -1, 0,
+        0, 1, 0};
+
+    GLFWwindow *window = glfwCreateWindow(800, 800, "Triangle", NULL, NULL);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        std::cout << "Failed to create window" << std::endl;
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+    gladLoadGL();
 
-    glViewport(0, 0, 800, 600);
+    glViewport(0, 0, 800, 800);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    GLfloat vertices[] = {
-        -1,
-        -1,
-        0,
-        1,
-        -1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        -1,
-        0,
-        -0.5,
-        0,
-        0,
-        0.5,
-        0,
-        0,
-    };
+    // create and compile vertex and fragment shaders
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vertexShaderText, NULL);
+    glCompileShader(vs);
 
-    GLuint indices[] = {
-        0, 3, 4,
-        1, 3, 5,
-        2, 4, 5};
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fragmentShaderText, NULL);
+    glCompileShader(fs);
 
-    GLuint vbo; // vertex buffer object, handles vertex data
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    // GL_STATIC_DRAW means the data is set only once and used many times
-
-    const GLchar *vertexShaderSource = "#version 330 core\n" // version 330 for OpenGL 3.3
-                                       "layout (location = 0) in vec3 aPos;\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                       "}\0";
-
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    GLuint vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    // 1 meaning we only pass in one string argument
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, sizeof(infoLog), NULL, infoLog);
-        std::cout << "Error compiling vertex shader:\n"
-                  << infoLog << std::endl;
-    }
-
-    const GLchar *fragmentShaderSource = "#version 330 core\n"
-                                         "out vec4 FragColor;\n"
-                                         "void main()\n"
-                                         "{\n"
-                                         "    FragColor = vec4(1.0f, 0.0f, 0.0f, 0.5f);\n"
-                                         "}\0";
-
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // needed to link both the vertex shader and fragment shader
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    // link the vertex shader and the fragment shader
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
+    // combine both the vertex and fragment shaders
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vs);
+    glAttachShader(shaderProgram, fs);
     glLinkProgram(shaderProgram);
 
-    // cleanup the vertex and fragment shader
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    // delete vertex and fragment shaders now that they are no
+    // longer used
+    glDeleteShader(vs);
+    glDeleteShader(fs);
 
-    // vertex array object
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    // vbo stores vertex data
+    // vao stores pointers to one or more vbos
+    GLuint VAO, VBO;
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    // always create vao before vbo
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // static draw as the vertices won't be modified often
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+    // param 1: position of the vertex attribute (0)
+    // param 2: number of inputs per vertex (3)
+    // param 4: size of inputs
+    // param 5: offset from beginning of vertex array (0)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-    // use the shader program
-    glUseProgram(shaderProgram);
-
-    // bind the buffers to 0 so we don't accidentally modify them
+    // prevent vao and vbo from being modified
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // set and apply the window clear colour
+    glClearColor(0.5f, 0.5f, 0.6f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    // swap the front and back buffers to display updated content
+    glfwSwapBuffers(window);
 
     while (!glfwWindowShouldClose(window))
     {
+        glClearColor(0.5f, 0.5f, 0.6f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-        processInput(window);
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        // rendering commands
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT); // sets color buffer to clear color
-
-        glBindVertexArray(vao);
-
-        // draw how many vertices are in the vertex buffer
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
-
-        // swap the buffers and check and call events
         glfwSwapBuffers(window);
+
         glfwPollEvents();
+        processInput(window);
     }
 
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
+    glfwDestroyWindow(window);
     glfwTerminate();
 
     return 0;
