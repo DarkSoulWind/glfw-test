@@ -17,4 +17,7 @@ public:
 
     void activate();
     void remove();
+
+private:
+    void compileErrors(unsigned int shader, const char *type);
 };

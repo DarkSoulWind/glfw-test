@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stb/stb_image.h>
 
 #include <iostream>
 #include <fstream>
@@ -45,68 +46,50 @@ int main(int argc, char *argv[])
     glViewport(0, 0, 800, 800);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    Shader shaderProgram("shaders/shader.vert", "shaders/shader.frag");
+    Shader shaderProgram("res/shaders/shader.vert", "res/shaders/shader.frag");
 
     GLfloat vertices[] = {
-        -1,
-        -1,
-        0,
-        1,
-        -1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        -1,
-        0,
-        -0.5,
-        0,
-        0,
-        0.5,
-        0,
-        0,
-    };
+        // layout:
+        // first three are coords
+        // second three are rgb values
+        -1, 1, 0, 0, 1, 0,
+        1, 1, 0, 1, 0, 0,
+        -1, -1, 0, 0, 0, 1,
+        1, -1, 0, 1, 1, 1};
 
     GLuint indices[] = {
-        0, 3, 4,
-        1, 3, 5,
-        2, 4, 5};
+        0,
+        1,
+        2,
+        1,
+        2,
+        3,
+    };
 
+    /* Creating a VAO object and then binding it. */
     VAO VAO1;
     VAO1.bind();
 
+    /* Creating a VBO and EBO object and passing the data to the constructor. */
     VBO VBO1(vertices, sizeof(vertices));
     EBO EBO1(indices, sizeof(indices));
 
-    VAO1.linkVBO(VBO1, 0);
+    /* Linking the VBO to the VAO. */
+    // 0 for coords layout
+    VAO1.linkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void *)0);
+    // 1 for rgb layout, 3 values offset from the start of the vertex
+    VAO1.linkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+
     VAO1.unbind();
     VBO1.unbind();
     EBO1.unbind();
 
-    // // vbo stores vertex data
-    // // vao stores pointers to one or more vbos
-    // // ebo stores vertex indices
-    // GLuint VAO, VBO, EBO;
+    // get scale uniform attribute from vertex shader
+    GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
-    // // always create vao before vbo
-    // glGenBuffers(1, &EBO);
-
-    // glBindVertexArray(VAO);
-
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // // prevent vao and vbo from being modified
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-    // glBindVertexArray(0);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // // set and apply the window clear colour
-    // glClearColor(0.5f, 0.5f, 0.6f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    // // swap the front and back buffers to display updated content
-    // glfwSwapBuffers(window);
+    int widthImg, heightImg, numColCh;
+    unsigned char *bytes = stbi_load("res/textures/cancer.png", &widthImg, &heightImg, &numColCh, 0);
+    std::cout << "image width: " << widthImg << " image height: " << heightImg << std::endl;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -114,10 +97,12 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
 
         shaderProgram.activate();
+        // set the uniform scale attribute for the vertex shader
+        glUniform1f(uniID, -0.5f);
 
         // bind the VAO so OpenGL uses it
         VAO1.bind();
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
 

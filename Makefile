@@ -4,7 +4,7 @@ CC = clang++
 SRC_FILES = $(wildcard src/*.cpp) $(wildcard src/*.c) 
 BUILD_DIR = build
 OUTPUT = prog
-INCLUDE_PATH = -Iinclude -Ilib/glfw/include -Iinclude/glad 
+INCLUDE_PATH = -Iinclude -Ilib/glfw/include -Iinclude/glad  -Iinclude/stb
 CCFLAGS = -std=c++17 -g -Wall
 LINKER_FLAGS = lib/glfw/src/libglfw3.a -lm
 
